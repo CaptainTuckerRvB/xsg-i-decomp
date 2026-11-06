@@ -1,19 +1,55 @@
-# Xenosaga Episode I
+# Xenosaga Episode I - Orbis PS4 Port
+
 [![Code](https://decomp.dev/OpokXeno/xsg-i-decomp.svg?mode=shield&label=Code)](https://decomp.dev/OpokXeno/xsg-i-decomp)
 [![Functions](https://decomp.dev/OpokXeno/xsg-i-decomp.svg?mode=shield&measure=functions&label=Functions)](https://decomp.dev/OpokXeno/xsg-i-decomp)
 [![Linked](https://decomp.dev/OpokXeno/xsg-i-decomp.svg?mode=shield&measure=complete_code&label=Linked)](https://decomp.dev/OpokXeno/xsg-i-decomp)
 
 > This project is developed with AI assistance.
 
-A matching decompilation of **Xenosaga Episode I: Der Wille zur Macht**
-for the PlayStation 2.
+## Fork Status and Roadmap
 
-The goal is readable C source that reproduces the original machine code.
-The Sony SDK and public libraries do not need to be recovered.
+This fork tracks the upstream matching decompilation of **Xenosaga Episode I: Der Wille zur Macht** while evaluating future platform portability and runtime abstraction work.
+
+### Current Repository Status
+
+- 100% published function recovery completed
+- Upstream matching decompilation remains the primary source of truth
+- No native PS4 port currently exists
+- No gameplay, renderer, audio, or platform abstraction work has been merged
+
+### Planned Research Areas
+
+- Native Windows runtime
+- Native Linux runtime
+- Filesystem abstraction
+- Input abstraction
+- Audio abstraction
+- Rendering abstraction
+- OpenOrbis PS4 feasibility research
+
+### Development Workflow
+
+- `main` contains stable repository state
+- `develop` receives reviewed integration work
+- `feature/*` branches own subsystem changes
+- `platform/*` branches own platform-specific code
+- `ai/*` branches contain AI-assisted research and prototypes
+
+### Repository Governance
+
+- GitHub Actions validation
+- CODEOWNERS review requirements
+- Pull request templates
+- Architecture guardrails
+- AI-assisted development disclosure
+
+Porting goals are exploratory only and should not be interpreted as indicating an existing native port.
+
+---
 
 ## Progress
 
-Published source coverage: 7,645 of 7,645 in-scope game functions (100.000%).
+Published source coverage: **7,645 of 7,645** in-scope game functions (**100.000%**).
 
 | Version | Target | Functions | Progress |
 | --- | --- | ---: | ---: |
@@ -26,60 +62,119 @@ Published source coverage: 7,645 of 7,645 in-scope game functions (100.000%).
 | NTSC-U | `SSD.IRX` | 442 / 442 | 100.000% |
 | NTSC-U | `RSSD.IRX` | 53 / 53 | 100.000% |
 
-[![Progress map](https://decomp.dev/OpokXeno/xsg-i-decomp.svg?w=950&h=475)](https://decomp.dev/OpokXeno/xsg-i-decomp)
+[![Progress Map](https://decomp.dev/OpokXeno/xsg-i-decomp.svg?w=950&h=475)](https://decomp.dev/OpokXeno/xsg-i-decomp)
+
+---
+
+## About This Project
+
+A matching decompilation of **Xenosaga Episode I: Der Wille zur Macht** for the PlayStation 2.
+
+The goal is readable C source that reproduces the original machine code. The Sony SDK and public libraries do not need to be recovered.
+
+The project focuses on:
+
+- Accurate source recovery
+- Reproducible retail binaries
+- Historical compiler preservation
+- Documentation of original build processes
+- Long-term maintainability
+
+The project does **not** distribute original game code, assets, SDK files, or copyrighted binaries.
+
+---
 
 ## Building
 
-The historical compilers are 32-bit Linux executables. On 64-bit Ubuntu,
-install `libc6-i386` and `python3-venv`. On Windows, use WSL and keep the
-checkout and build on a Linux filesystem: the old compilers cannot read some
-Windows filesystem metadata and report `Value too large for defined data type`.
+The historical compilers are 32-bit Linux executables.
 
-You need three things the repository does not contain: your own copy of the
-game, the original toolchain, and a Python environment for the disassembler.
+On 64-bit Ubuntu:
 
-### 1. The originals
+```bash
+sudo apt install libc6-i386 python3-venv
+```
 
-Extract `SLUS_204.69`, `OV01.OVL`, `OV02.OVL`, `OV10.OVL`, `OV11.OVL`,
-`OV12.OVL` and the `IOP/` directory from your own disc image and put them in one
-folder. `config/originals.json` names the six files with their sizes and
-SHA-256; the build refuses anything else, so it tells you immediately if you
-have a different release. This project reproduces the NTSC-U release.
+On Windows, use **WSL** and keep the checkout and build on a Linux filesystem.
 
-### 2. The toolchain
+The historical compilers cannot read some Windows filesystem metadata and may report:
 
-`config/toolchain-identity.json`: for every compiler and
-assembler it gives the version, the SHA-256 of each payload, and the provenance
-needed to obtain or rebuild it. Two of the tools are patched, and both patches
-are recorded there in full:
+```text
+Value too large for defined data type
+```
 
-| Tool | What the build uses it for                                                                                | Where it comes from |
-| --- |-----------------------------------------------------------------------------------------------------------| --- |
-| `ee-gcc2.96-realconv-lp7` | `cc1` for the game code (Monolith) and the C runtime (newlib/libgcc)                                      | the published `ee-gcc2.96` archive, with twenty-nine documented patches to `cc1` (six single bytes that restore the original decimal-literal rounding, two that restore the R5900 short-loop padding, five multi-byte alias-analysis patches, fsv1, fsv3 and fsv4 (`%lo`-addressed global scalars and struct-field accesses may be reordered in either direction, a non-small-data global's memory reference gets its type's alias set, and gcse load-PRE keeps a fixed scalar load across an in-struct store through a varying pointer), the two fsv5 (qisi) patches (a `char` sign-extended to 64 bits is `lb` plus a separate in-place `extendsidi2`, never one `extendqidi2_insn`), the three fsv6 patches (symbolic `sym(reg)` addresses are always legitimate and an address-taken variable gets alias set 0, instead of depending on host heap garbage), the four fsv7 patches (gcse load-PRE: a struct store through a pointer loaded from global `S` kills a later load of `S`), the two fsv8 patches (a small-data global with a non-zero initializer gets its type's alias set, as a non-small-data global does), the fsv9 patch (gcse load-PRE: a struct store through a pointer loaded from any global kills a later load of a global), the two fsv10 patches (gcse: a 32-bit union member store through a struct pointer is tested with `rtx_varies_p`), and the two fsv12 patches (after reload, an address load into a callee-saved register that follows a call in its block is split into `lui`/`addiu`)) |
-| `ee-gcc2.9-991111` | `cc1` for the SCE SDK scaffold objects only (out of recovery scope, INCLUDE_ASM of the original assembly. | the published `ee-gcc2.9-991111` archive, unmodified |
-| `ee-as-la29-vsqrt` | assembler for every game and runtime object                                                               | GNU as 2.9-ee-991111 built from the pinned `ps2-ee-toolchain` commit with the recorded four-change diff (an overlap-safe `memmove`, the `vsqrt` opcode's bits 21-22, labels left before the hazard nops `append_insn` inserts, and `la` of a base register plus a 16-bit constant as one `addiu`) |
-| `ee-as-2.9-plain` | assembler for the SCE SDK objects                                                                         | the same commit, unpatched |
-| `ps2dev-binutils` | linker and objcopy of every image, and modern GAS for data objects and retail blobs                       | ps2dev binutils 2.45.1, the linker, objcopy and modern GAS |
+You need three things the repository does not contain:
 
-Lay them out under one directory as `config/toolchain-identity.json`'s
-`tools.<id>.dir` / `.path` say. Then:
+1. Your own copy of the game
+2. The original toolchain
+3. A Python environment for the disassembler
+
+---
+
+### 1. The Originals
+
+Extract the following from your legally obtained disc image:
+
+```text
+SLUS_204.69
+OV01.OVL
+OV02.OVL
+OV10.OVL
+OV11.OVL
+OV12.OVL
+IOP/
+```
+
+Place them in a single directory.
+
+`config/originals.json` contains the expected file sizes and SHA-256 hashes. The build verifies these automatically and rejects incorrect revisions.
+
+This project targets the **NTSC-U** release.
+
+---
+
+### 2. The Toolchain
+
+`config/toolchain-identity.json` documents every compiler, assembler, linker, hash, and provenance record required by the build.
+
+Required tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `ee-gcc2.96-realconv-lp7` | Game code and runtime compiler |
+| `ee-gcc2.9-991111` | SCE SDK scaffold compiler |
+| `ee-as-la29-vsqrt` | Primary assembler |
+| `ee-as-2.9-plain` | SDK assembler |
+| `ps2dev-binutils` | Linker, objcopy, and modern GAS |
+
+Verify installation:
 
 ```bash
 python3 -B tools/tu/toolchain.py --check
 ```
 
-It prints where it looked and what it found, and refuses with the tool's name,
-both hashes and the recipe when something is missing or different.
+The verification process checks:
 
-### 3. The disassembler
+- Tool locations
+- Expected hashes
+- Tool provenance
+- Required patches
+
+---
+
+### 3. The Disassembler
+
+Create and configure the Python environment:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
 
-### 4. Tell the build where those three are
+---
 
-By environment variable:
+### 4. Configure Local Paths
+
+Using environment variables:
 
 ```bash
 export XENO_GAME_DIR=/path/to/extracted-iso
@@ -87,7 +182,9 @@ export XENO_TOOLCHAIN_DIR=/path/to/toolchains
 export XENO_SPLAT_PYTHON=$PWD/.venv/bin/python
 ```
 
-or once, in `config/toolchain-local.json` (untracked):
+Or create:
+
+`config/toolchain-local.json`
 
 ```json
 {
@@ -97,53 +194,225 @@ or once, in `config/toolchain-local.json` (untracked):
 }
 ```
 
-Three of the tools are built from source rather than downloaded, so their bytes
-depend on the host compiler. A build of the same source that assembles the same
-bytes still reproduces the images: accept it one tool at a time with
-`XENO_TOOLCHAIN_ALLOW=ee-as-la29-vsqrt,ee-as-2.9-plain,ps2dev-binutils`. The
-build then says which check it relaxed.
+Some tools are built locally and may differ byte-for-byte while still producing identical binaries.
+
+Override tool verification when required:
+
+```bash
+XENO_TOOLCHAIN_ALLOW=ee-as-la29-vsqrt,ee-as-2.9-plain,ps2dev-binutils
+```
+
+---
 
 ### 5. Build
 
+Generate build files:
+
 ```bash
-./configure.py      # generate every unit build directory and build.ninja
-ninja               # build and compare all six originals
-ninja gate          # + per-unit status and the whole-file SHA-256 gate
+./configure.py
 ```
 
-`ninja gate` writes `build/gate.json`. `"result": "pass"` means every one of the
-six files came out byte for byte identical to your original.
+Build:
 
-Public builds use `config/objects/data-carves.json` to place constants and jump
-tables emitted by the recovered C functions. Terminal object padding is verified
-from the published object ranges and original ELF symbols when the private
-`config/tu-build.json` is absent. Neither requires private acceptance records.
+```bash
+ninja
+```
+
+Verify matching outputs:
+
+```bash
+ninja gate
+```
+
+Results are written to:
+
+```text
+build/gate.json
+```
+
+Success is reported as:
+
+```json
+{
+  "result": "pass"
+}
+```
+
+meaning all generated binaries match the originals exactly.
+
+Public builds use:
+
+```text
+config/objects/data-carves.json
+```
+
+to place constants and jump tables emitted by recovered functions.
+
+---
+
+## Repository Layout
+
+```text
+.github/
+├── workflows/
+├── ISSUE_TEMPLATE/
+├── CODEOWNERS
+└── pull_request_template.md
+
+docs/
+├── architecture/
+├── hardware/
+└── ps4/
+
+src/
+├── core/
+├── render/
+├── audio/
+├── input/
+├── filesystem/
+└── savedata/
+
+platform/
+├── windows/
+├── linux/
+└── ps4/
+
+tests/
+
+tools/
+
+assets/
+```
+
+Subsystem directories support future portability and abstraction efforts while preserving the upstream matching-decomp structure.
+
+---
+
+## Branch Strategy
+
+```text
+main
+│
+├── develop
+│
+├── feature/*
+│   ├── boot
+│   ├── renderer
+│   ├── audio
+│   ├── input
+│   ├── filesystem
+│   ├── savedata
+│   ├── testing
+│   └── repository-bootstrap
+│
+├── platform/*
+│   ├── windows
+│   ├── linux
+│   └── ps4
+│
+└── ai/*
+    ├── research
+    ├── reviews
+    └── prototypes
+```
+
+### Merge Flow
+
+```text
+ai/*
+    ↓
+feature/*
+    ↓
+develop
+    ↓
+main
+```
+
+---
 
 ## Contributing
 
-Pick an object from `config/objects/<unit>.objects.json` that has no source yet,
-write the C, and build: `ninja` tells you whether the file still comes out
-identical. A function counts when its translation unit's source defines it in C
-and the whole-file gate passes.
+Pick an object from:
+
+```text
+config/objects/<unit>.objects.json
+```
+
+that has no recovered source.
+
+Write the C implementation and run:
+
+```bash
+ninja
+```
+
+A function counts as recovered when:
+
+- The translation unit defines it in C
+- The file still matches
+- The gate succeeds
+
+Development contributions in this fork should follow:
+
+- Pull requests only
+- CODEOWNERS review
+- Passing GitHub Actions checks
+- Subsystem ownership boundaries
+- AI disclosure requirements when applicable
+
+---
+
+## Future Research Areas
+
+The following are exploratory goals and are **not currently implemented**:
+
+- Native Windows runtime support
+- Native Linux runtime support
+- Asset abstraction
+- Filesystem abstraction
+- Input abstraction
+- Audio abstraction
+- Rendering abstraction
+- OpenOrbis PS4 research
+- Build modernization
+
+These goals must not compromise the matching decompilation baseline.
+
+---
 
 ## Acknowledgments
 
 Thanks to the developers and contributors of the projects on which this work relies:
 
 - [splat](https://github.com/ethteck/splat),
-  [spimdisasm](https://github.com/Decompollaborate/spimdisasm), and
-  [Rabbitizer](https://github.com/Decompollaborate/rabbitizer) for splitting and disassembly.
-- [m2c](https://github.com/matt-kempster/m2c) for first-pass decompilation of MIPS
-  assembly into C.
-- [decomp-permuter](https://github.com/simonlindholm/decomp-permuter) for the bounded
-  mutation search over a compiled non-exact base.
-- [ps2dev/binutils-gdb](https://github.com/ps2dev/binutils-gdb) and
-  [SSXModding/ps2-ee-toolchain](https://github.com/SSXModding/ps2-ee-toolchain) for EE toolchains.
-- [decomp.me's compiler collection](https://github.com/decompme/compilers) for historical compiler distributions.
-- [PCSX2](https://github.com/PCSX2/pcsx2) for its documented EE implementation and behavioral reference.
+  [spimdisasm](https://github.com/Decompollaborate/spimdisasm),
+  and [Rabbitizer](https://github.com/Decompollaborate/rabbitizer)
+- [m2c](https://github.com/matt-kempster/m2c)
+- [decomp-permuter](https://github.com/simonlindholm/decomp-permuter)
+- [ps2dev/binutils-gdb](https://github.com/ps2dev/binutils-gdb)
+- [SSXModding/ps2-ee-toolchain](https://github.com/SSXModding/ps2-ee-toolchain)
+- [decomp.me compiler collection](https://github.com/decompme/compilers)
+- [PCSX2](https://github.com/PCSX2/pcsx2)
+
+---
 
 ## Disclaimer
 
-A legally obtained copy of the game is required. No original game binaries or
-copyrighted game assets are distributed in this repository. All game rights belong
-to their respective owners; this project is not affiliated with or endorsed by them.
+A legally obtained copy of the game is required.
+
+This repository does not distribute:
+
+- Original game binaries
+- Disc images
+- Proprietary SDK files
+- Copyrighted game assets
+
+All rights belong to their respective owners.
+
+This project is not affiliated with, sponsored :
+
+- Monolith Soft
+- Namco
+- Bandai Namco Entertainment
+- Sony Interactive Entertainment
+- Any associated rights holders
